@@ -1,0 +1,81 @@
+MASTER SOFTWARE SUBSCRIPTION AGREEMENT
+
+This Master Software Subscription Agreement ("Agreement") is entered into by and between Northwind Analytics Pvt Ltd, a company incorporated in India ("Provider") and Kestrel Retail Group Limited ("Customer").
+
+This Agreement is effective as of March 14, 2026 (the "Effective Date").
+
+1. DEFINITIONS
+
+1.1 "Services" means the hosted analytics platform made available by Provider.
+
+1.2 "Subscription Term" means the period during which Customer is licensed to access the Services.
+
+2. TERM AND RENEWAL
+
+2.1 The initial term of this Agreement shall be 24 months from the Effective Date.
+
+2.2 Upon expiry of the initial term, this Agreement shall automatically renew for successive periods of 12 months each, unless either party gives written notice of at least 90 days prior to the end of the then-current term.
+
+2.3 Provider may terminate this Agreement at any time for convenience upon 30 days written notice to Customer. Customer may terminate only for material breach that remains uncured after 45 days.
+
+3. FEES AND PAYMENT
+
+3.1 Customer shall pay Provider a subscription fee of USD 84,000 per year.
+
+3.2 All invoices are payable within 30 days of the invoice date. Payment terms are Net 30.
+
+3.3 Interest at the rate of 2.5% per month shall accrue on any overdue amounts.
+
+3.4 Provider reserves the right to increase the fees upon renewal of any term, at its sole discretion.
+
+4. INTELLECTUAL PROPERTY
+
+4.1 All intellectual property rights in the Services shall vest in Provider.
+
+4.2 Customer hereby assigns to Provider all intellectual property rights in any feedback, suggestions or improvements provided to Provider.
+
+5. CONFIDENTIALITY
+
+5.1 Each party shall keep confidential all Confidential Information disclosed for a period of 5 years following disclosure.
+
+6. WARRANTIES AND DISCLAIMERS
+
+6.1 THE SERVICES ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, AND PROVIDER DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED.
+
+7. LIMITATION OF LIABILITY
+
+7.1 The aggregate liability of Provider under this Agreement shall not exceed USD 12,000.
+
+7.2 Nothing in this Agreement shall limit the liability of Customer in respect of its payment obligations or breach of confidentiality.
+
+8. INDEMNIFICATION
+
+8.1 Customer shall indemnify and hold harmless Provider against all claims arising from Customer's use of the Services.
+
+9. RESTRICTIONS
+
+9.1 During the Subscription Term and for 24 months thereafter, Customer shall not solicit any employee of Provider.
+
+9.2 Customer shall not engage in any business that competes with the Services during the term of this Agreement.
+
+10. ASSIGNMENT
+
+10.1 Customer shall not assign this Agreement without the prior written consent of Provider. Provider may assign this Agreement to any affiliate or successor without consent.
+
+11. AMENDMENTS
+
+11.1 Provider may modify these terms at any time by posting an updated version. Customer's continued use of the Services constitutes acceptance of the modified terms.
+
+12. DATA PROTECTION
+
+12.1 The parties shall comply with the Digital Personal Data Protection Act and, where applicable, the General Data Protection Regulation.
+
+13. FORCE MAJEURE
+
+13.1 Neither party shall be liable for any failure caused by force majeure, including acts of God, provided that payment obligations shall not be excused.
+
+14. GOVERNING LAW AND DISPUTES
+
+14.1 This Agreement shall be governed by and construed in accordance with the laws of Singapore.
+
+14.2 Any dispute shall be finally settled by binding arbitration in Singapore under the SIAC Rules.

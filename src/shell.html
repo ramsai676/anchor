@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anchor: every finding cited to its clause</title>
+<meta name="description" content="Reads a contract and anchors every finding to the exact clause it came from. It cannot hallucinate, because it never generates.">
+<style>/*__CSS__*/</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wordmark">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <circle cx="9" cy="3.4" r="2.1" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M9 5.6V16M4.4 7.4h9.2M3 11.4a6 6 0 0 0 12 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    Anchor
+  </div>
+  <div class="tagline">Every finding quoted from the clause it came from</div>
+  <div class="masthead-actions">
+    <button class="btn" id="reset" type="button" hidden>New document</button>
+  </div>
+</header>
+
+<main id="intake" class="intake">
+  <h1>Contract review that can’t make things up.</h1>
+  <p>
+    Anchor finds the obligations, deadlines and risks in a contract and shows you
+    the exact clause each one came from. It never writes a sentence about your
+    document, so there is nothing it could invent. Everything runs in this tab, and
+    the contract is never uploaded anywhere.
+  </p>
+
+  <div class="dropzone" id="dropzone" data-over="false">
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-primary" id="sample" type="button">Try a sample contract</button>
+      <label class="btn" for="file" style="display:inline-flex;align-items:center">Choose a file</label>
+      <input type="file" id="file" accept=".txt,.md,text/plain" hidden>
+    </div>
+    <div class="dropzone-hint">or drop a .txt file here</div>
+  </div>
+
+  <textarea class="paste" id="paste" spellcheck="false"
+    placeholder="…or paste the contract text here, then press Analyse (Ctrl+Enter)"></textarea>
+
+  <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+    <button class="btn btn-primary" id="analyse" type="button">Analyse</button>
+    <span style="color:var(--ink-3);font-size:12.5px">Nothing leaves your browser.</span>
+  </div>
+</main>
+
+<div class="workspace" id="workspace" hidden>
+  <aside class="findings">
+    <div class="summary" id="summary"></div>
+    <div id="findings-list"></div>
+  </aside>
+  <article>
+    <div class="document">
+      <div style="color:var(--ink-3);font-size:12px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)" id="coverage"></div>
+      <div id="document"></div>
+    </div>
+  </article>
+</div>
+
+<script>/*__JS__*/</script>
+</body>
+</html>
