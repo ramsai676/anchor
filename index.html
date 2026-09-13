@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anchor: every finding cited to its clause</title>
+<meta name="description" content="Reads a contract and anchors every finding to the exact clause it came from. It cannot hallucinate, because it never generates.">
+<style>/* Anchor reads like a legal document on one side and a tool on the other, so the
+   document keeps a serif and the interface stays in system sans. The split is
+   deliberate: it tells you at a glance which half is evidence and which half is
+   the machine talking. */
+
+:root {
+  color-scheme: light dark;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --bg: #fbfaf8;
+  --panel: #ffffff;
+  --ink: #14161a;
+  --ink-2: #4a5058;
+  --ink-3: #767d86;
+  --line: #e4e2dd;
+  --line-2: #efedE8;
+
+  --risk: #b42318;
+  --risk-bg: #fef3f2;
+  --risk-line: #fecdc9;
+  --watch: #a15c07;
+  --watch-bg: #fffaeb;
+  --watch-line: #fedf89;
+  --info: #475467;
+  --info-bg: #f4f5f7;
+  --info-line: #e0e3e8;
+
+  --accent: #14161a;
+  --mark: #fff1a8;
+  --mark-live: #ffd84d;
+
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 18, 22, 0.05), 0 4px 16px -6px rgba(16, 18, 22, 0.10);
+}
+
+:root[data-theme='dark'],
+:root:not([data-theme='light']) {
+  @media (prefers-color-scheme: dark) {
+    --bg: #0e1013;
+    --panel: #16191e;
+    --ink: #eceef1;
+    --ink-2: #a6adb6;
+    --ink-3: #767d86;
+    --line: #262b32;
+    --line-2: #1d2127;
+
+    --risk: #fda29b;
+    --risk-bg: #2a1512;
+    --risk-line: #55211c;
+    --watch: #fec84b;
+    --watch-bg: #251c09;
+    --watch-line: #4e3a0d;
+    --info: #a6adb6;
+    --info-bg: #1b1f25;
+    --info-line: #2a2f37;
+
+    --accent: #eceef1;
+    --mark: #4d4212;
+    --mark-live: #7a6716;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px -6px rgba(0, 0, 0, 0.5);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* .workspace sets display:grid, which outranks the hidden attribute's UA style.
+   Without this the results pane leaks under the intake screen. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.55 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- shell ---------- */
+
+.masthead {
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 650;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.wordmark svg { display: block; }
+
+.tagline {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  border-left: 1px solid var(--line);
+  padding-left: 16px;
+}
+
+.masthead-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* ---------- controls ---------- */
+
+.btn {
+  font: inherit;
+  font-weight: 550;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 13px;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 160ms ease, background 160ms ease;
+}
+
+.btn:active { transform: scale(0.97); }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { border-color: var(--ink-3); }
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ---------- drop zone ---------- */
+
+.intake {
+  max-width: 860px;
+  margin: 56px auto;
+  padding: 0 20px;
+}
+
+.intake h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+  font-weight: 640;
+}
+
+.intake p {
+  color: var(--ink-2);
+  margin: 0 0 26px;
+  font-size: 15px;
+  max-width: 60ch;
+}
+
+.dropzone {
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 40px 24px;
+  text-align: center;
+  transition: border-color 200ms ease, background 200ms ease, transform 200ms var(--ease-out);
+}
+
+.dropzone[data-over='true'] {
+  border-color: var(--ink-2);
+  background: var(--info-bg);
+  transform: scale(1.005);
+}
+
+.dropzone-hint { color: var(--ink-3); font-size: 13px; margin-top: 10px; }
+
+textarea.paste {
+  width: 100%;
+  min-height: 180px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  font: 13px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  resize: vertical;
+  transition: border-color 160ms ease;
+}
+
+textarea.paste:focus { outline: none; border-color: var(--ink-3); }
+
+/* ---------- results layout ---------- */
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(330px, 400px) 1fr;
+  gap: 0;
+  align-items: start;
+  min-height: calc(100vh - 59px);
+}
+
+.findings {
+  border-right: 1px solid var(--line);
+  padding: 16px;
+  position: sticky;
+  top: 59px;
+  max-height: calc(100vh - 59px);
+  overflow-y: auto;
+}
+
+.summary {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tally {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  background: var(--panel);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: transform 160ms var(--ease-out), border-color 160ms ease;
+}
+
+.tally:active { transform: scale(0.97); }
+.tally[aria-pressed='true'] { border-color: var(--ink); }
+.tally .n { font-size: 19px; font-weight: 640; letter-spacing: -0.02em; display: block; }
+.tally .k { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.tally[data-sev='risk'] .n { color: var(--risk); }
+.tally[data-sev='watch'] .n { color: var(--watch); }
+
+.finding {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 11px 13px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  display: block;
+  transition: transform 160ms var(--ease-out), border-color 160ms ease, box-shadow 160ms ease;
+
+  opacity: 0;
+  animation: rise 280ms var(--ease-out) forwards;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.finding:active { transform: scale(0.985); }
+.finding[data-active='true'] { border-color: var(--ink); box-shadow: var(--shadow); }
+
+@media (hover: hover) and (pointer: fine) {
+  .finding:hover { border-color: var(--ink-3); }
+}
+
+.finding[data-sev='risk'] { border-left-color: var(--risk); }
+.finding[data-sev='watch'] { border-left-color: var(--watch); }
+.finding[data-sev='info'] { border-left-color: var(--info-line); }
+
+.finding-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.finding-label { font-weight: 600; font-size: 13.5px; letter-spacing: -0.005em; }
+
+.chip {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.chip[data-sev='risk'] { color: var(--risk); background: var(--risk-bg); border: 1px solid var(--risk-line); }
+.chip[data-sev='watch'] { color: var(--watch); background: var(--watch-bg); border: 1px solid var(--watch-line); }
+.chip[data-sev='info'] { color: var(--info); background: var(--info-bg); border: 1px solid var(--info-line); }
+
+.finding-cite {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+
+.finding-quote {
+  font-family: Charter, Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  border-left: 2px solid var(--line);
+  padding-left: 9px;
+  margin-bottom: 7px;
+}
+
+.finding-why { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+
+/* ---------- document ---------- */
+
+.document {
+  padding: 28px 40px 120px;
+  max-width: 780px;
+}
+
+.clause {
+  scroll-margin-top: 76px;
+  padding: 4px 10px;
+  margin: 0 -10px 14px;
+  border-radius: 6px;
+  transition: background 220ms ease;
+}
+
+.clause[data-lit='true'] { background: var(--info-bg); }
+
+.clause-no {
+  font: 600 11.5px/1 ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.clause-body {
+  font-family: Charter, Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  line-height: 1.68;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+mark {
+  background: var(--mark);
+  color: inherit;
+  padding: 1px 2px;
+  border-radius: 3px;
+  transition: background 240ms ease;
+}
+
+mark[data-live='true'] { background: var(--mark-live); }
+
+.empty {
+  color: var(--ink-3);
+  font-size: 13px;
+  text-align: center;
+  padding: 30px 10px;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: 1fr; }
+  .findings {
+    position: static;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .document { padding: 22px 20px 80px; }
+  .tagline { display: none; }
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .finding { animation: fade 200ms ease forwards; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .btn:active, .finding:active, .tally:active { transform: none; }
+  .dropzone[data-over='true'] { transform: none; }
+  * { scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wordmark">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <circle cx="9" cy="3.4" r="2.1" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M9 5.6V16M4.4 7.4h9.2M3 11.4a6 6 0 0 0 12 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    Anchor
+  </div>
+  <div class="tagline">Every finding quoted from the clause it came from</div>
+  <div class="masthead-actions">
+    <button class="btn" id="reset" type="button" hidden>New document</button>
+  </div>
+</header>
+
+<main id="intake" class="intake">
+  <h1>Contract review that can’t make things up.</h1>
+  <p>
+    Anchor finds the obligations, deadlines and risks in a contract and shows you
+    the exact clause each one came from. It never writes a sentence about your
+    document, so there is nothing it could invent. Everything runs in this tab, and
+    the contract is never uploaded anywhere.
+  </p>
+
+  <div class="dropzone" id="dropzone" data-over="false">
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-primary" id="sample" type="button">Try a sample contract</button>
+      <label class="btn" for="file" style="display:inline-flex;align-items:center">Choose a file</label>
+      <input type="file" id="file" accept=".txt,.md,text/plain" hidden>
+    </div>
+    <div class="dropzone-hint">or drop a .txt file here</div>
+  </div>
+
+  <textarea class="paste" id="paste" spellcheck="false"
+    placeholder="…or paste the contract text here, then press Analyse (Ctrl+Enter)"></textarea>
+
+  <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+    <button class="btn btn-primary" id="analyse" type="button">Analyse</button>
+    <span style="color:var(--ink-3);font-size:12.5px">Nothing leaves your browser.</span>
+  </div>
+</main>
+
+<div class="workspace" id="workspace" hidden>
+  <aside class="findings">
+    <div class="summary" id="summary"></div>
+    <div id="findings-list"></div>
+  </aside>
+  <article>
+    <div class="document">
+      <div style="color:var(--ink-3);font-size:12px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)" id="coverage"></div>
+      <div id="document"></div>
+    </div>
+  </article>
+</div>
+
+<script>(function(){
+'use strict';
+/* ---- sample.js ---- */
+const SAMPLE = "MASTER SOFTWARE SUBSCRIPTION AGREEMENT\n\nThis Master Software Subscription Agreement (\"Agreement\") is entered into by and between Northwind Analytics Pvt Ltd, a company incorporated in India (\"Provider\") and Kestrel Retail Group Limited (\"Customer\").\n\nThis Agreement is effective as of March 14, 2026 (the \"Effective Date\").\n\n1. DEFINITIONS\n\n1.1 \"Services\" means the hosted analytics platform made available by Provider.\n\n1.2 \"Subscription Term\" means the period during which Customer is licensed to access the Services.\n\n2. TERM AND RENEWAL\n\n2.1 The initial term of this Agreement shall be 24 months from the Effective Date.\n\n2.2 Upon expiry of the initial term, this Agreement shall automatically renew for successive periods of 12 months each, unless either party gives written notice of at least 90 days prior to the end of the then-current term.\n\n2.3 Provider may terminate this Agreement at any time for convenience upon 30 days written notice to Customer. Customer may terminate only for material breach that remains uncured after 45 days.\n\n3. FEES AND PAYMENT\n\n3.1 Customer shall pay Provider a subscription fee of USD 84,000 per year.\n\n3.2 All invoices are payable within 30 days of the invoice date. Payment terms are Net 30.\n\n3.3 Interest at the rate of 2.5% per month shall accrue on any overdue amounts.\n\n3.4 Provider reserves the right to increase the fees upon renewal of any term, at its sole discretion.\n\n4. INTELLECTUAL PROPERTY\n\n4.1 All intellectual property rights in the Services shall vest in Provider.\n\n4.2 Customer hereby assigns to Provider all intellectual property rights in any feedback, suggestions or improvements provided to Provider.\n\n5. CONFIDENTIALITY\n\n5.1 Each party shall keep confidential all Confidential Information disclosed for a period of 5 years following disclosure.\n\n6. WARRANTIES AND DISCLAIMERS\n\n6.1 THE SERVICES ARE PROVIDED \"AS IS\" WITHOUT WARRANTY OF ANY KIND, AND PROVIDER DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED.\n\n7. LIMITATION OF LIABILITY\n\n7.1 The aggregate liability of Provider under this Agreement shall not exceed USD 12,000.\n\n7.2 Nothing in this Agreement shall limit the liability of Customer in respect of its payment obligations or breach of confidentiality.\n\n8. INDEMNIFICATION\n\n8.1 Customer shall indemnify and hold harmless Provider against all claims arising from Customer's use of the Services.\n\n9. RESTRICTIONS\n\n9.1 During the Subscription Term and for 24 months thereafter, Customer shall not solicit any employee of Provider.\n\n9.2 Customer shall not engage in any business that competes with the Services during the term of this Agreement.\n\n10. ASSIGNMENT\n\n10.1 Customer shall not assign this Agreement without the prior written consent of Provider. Provider may assign this Agreement to any affiliate or successor without consent.\n\n11. AMENDMENTS\n\n11.1 Provider may modify these terms at any time by posting an updated version. Customer's continued use of the Services constitutes acceptance of the modified terms.\n\n12. DATA PROTECTION\n\n12.1 The parties shall comply with the Digital Personal Data Protection Act and, where applicable, the General Data Protection Regulation.\n\n13. FORCE MAJEURE\n\n13.1 Neither party shall be liable for any failure caused by force majeure, including acts of God, provided that payment obligations shall not be excused.\n\n14. GOVERNING LAW AND DISPUTES\n\n14.1 This Agreement shall be governed by and construed in accordance with the laws of Singapore.\n\n14.2 Any dispute shall be finally settled by binding arbitration in Singapore under the SIAC Rules.\n";
+
+/* ---- segment.js ---- */
+// Contracts are written as a numbered tree, and every finding has to point back
+// to a specific place in that tree. Segmentation happens once, up front, so that
+// every extractor can cite a clause instead of a character offset nobody can read.
+
+const HEADING = [
+  // 1.  |  1.1  |  1.1.2  |  12.3.4.5
+  /^\s*(\d+(?:\.\d+)*)\.?\s+(.{0,120})$/,
+  // Section 4 | SECTION 4.2 | Clause 7 | Article IX
+  /^\s*(?:section|clause|article)\s+([\dIVXLC]+(?:\.\d+)*)\.?[\s:-]*(.{0,120})$/i,
+  // (a) | (iv)
+  /^\s*\(([a-z]{1,3}|[ivxlc]{1,6})\)\s+(.{0,120})$/i
+];
+
+// Contracts number their clauses and then write the whole paragraph on the same
+// line, so length cannot be used to reject a heading. A line that opens with a
+// clause number IS a clause start no matter how long it runs; the title is just
+// the opening words of it.
+const MAX_HEADING_LEN = 140;
+const NUMBERED = /^\s*(\d+(?:\.\d+)*)\.?\s+(\S.*)$/;
+const TITLE_CHARS = 70;
+
+function headingOf(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+
+  const numbered = trimmed.match(NUMBERED);
+  if (numbered) {
+    const rest = numbered[2];
+    const title = rest.length > TITLE_CHARS
+      ? rest.slice(0, TITLE_CHARS).replace(/\s+\S*$/, '') + '…'
+      : rest;
+    return { number: numbered[1], title: title.trim() };
+  }
+
+  if (trimmed.length > MAX_HEADING_LEN) return null;
+  for (const re of HEADING) {
+    const m = trimmed.match(re);
+    if (m) return { number: m[1], title: (m[2] || '').trim() };
+  }
+  // ALL CAPS lines are headings in most contract drafting styles.
+  if (/^[A-Z][A-Z\s&,'()-]{4,}$/.test(trimmed) && trimmed.split(/\s+/).length <= 10) {
+    return { number: null, title: trimmed };
+  }
+  return null;
+}function segment(text) {
+  const normalised = text.replace(/\r\n?/g, '\n');
+  const lines = normalised.split('\n');
+
+  const clauses = [];
+  let current = null;
+  let offset = 0;
+
+  const push = () => {
+    if (!current) return;
+    current.text = current.lines.join('\n').trim();
+    current.end = current.start + current.lines.join('\n').length;
+    if (current.text) clauses.push(current);
+    current = null;
+  };
+
+  for (const line of lines) {
+    const head = headingOf(line);
+    if (head) {
+      push();
+      current = {
+        id: `c${clauses.length + 1}`,
+        number: head.number,
+        title: head.title,
+        start: offset,
+        lines: [line]
+      };
+    } else if (current) {
+      current.lines.push(line);
+    } else {
+      // Preamble before the first heading still needs to be citable.
+      current = {
+        id: `c${clauses.length + 1}`,
+        number: null,
+        title: 'Preamble',
+        start: offset,
+        lines: [line]
+      };
+    }
+    offset += line.length + 1;
+  }
+  push();
+
+  return clauses.map((c, i) => ({
+    ...c,
+    index: i,
+    label: c.number ? `${c.number}${c.title ? ' ' + c.title : ''}` : (c.title || `Clause ${i + 1}`)
+  }));
+}
+
+// A quote has to be short enough to read in a card and long enough to prove the
+// point, so it is trimmed to a sentence window around the match, never mid-word.function quoteAround(clauseText, matchIndex, matchLength, window = 220) {
+  const start = Math.max(0, matchIndex - Math.floor((window - matchLength) / 2));
+  const end = Math.min(clauseText.length, start + window);
+
+  let slice = clauseText.slice(start, end);
+  if (start > 0) {
+    const cut = slice.search(/[\s]/);
+    slice = (cut > -1 ? slice.slice(cut + 1) : slice);
+  }
+  if (end < clauseText.length) {
+    const cut = slice.lastIndexOf(' ');
+    slice = cut > 40 ? slice.slice(0, cut) : slice;
+  }
+
+  return (start > 0 ? '…' : '') + slice.replace(/\s+/g, ' ').trim() + (end < clauseText.length ? '…' : '');
+}
+
+/* ---- rules.js ---- */
+// Every rule is a locator, never a generator. A rule may only point at text that
+// already exists in the document and say what kind of term it is. Nothing here
+// can invent a clause, a number, or an obligation, which is the entire safety
+// argument: there is no step at which a fabrication could enter.const SEVERITY = { info: 0, watch: 1, risk: 2 };
+
+const money = String.raw`(?:[$£€₹]\s?[\d,]+(?:\.\d{2})?|(?:USD|EUR|GBP|INR|NOK)\s?[\d,]+(?:\.\d{2})?|[\d,]+\s?(?:lakh|crore|million|billion))`;
+const days = String.raw`(\d{1,4}|thirty|sixty|ninety|fifteen|forty-five|one hundred and eighty)\s*[-\s]?\s*(day|business day|week|month|year)s?`;const RULES = [
+  {
+    id: 'parties',
+    label: 'Parties',
+    category: 'Identity',
+    severity: 'info',
+    patterns: [
+      /\bbetween\s+(.{3,90}?)\s+(?:and|&)\s+(.{3,90}?)(?:[,.]|\s+\()/i,
+      /\bby and between\s+(.{3,90}?)\s+and\s+(.{3,90}?)[,.]/i
+    ],
+    explain: () => 'Names the entities bound by this agreement. Everything else in the document allocates rights between exactly these two.'
+  },
+  {
+    id: 'effective_date',
+    label: 'Effective date',
+    category: 'Time',
+    severity: 'info',
+    patterns: [
+      /\beffective\s+(?:as\s+of\s+|date[:\s]+|on\s+)([A-Z][a-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i,
+      /\bcommenc(?:es|ing|ement date)\s+(?:on\s+)?([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})/i
+    ],
+    explain: () => 'The date obligations start running. Every notice period and deadline in the contract is counted from a date like this one.'
+  },
+  {
+    id: 'term_length',
+    label: 'Term length',
+    category: 'Time',
+    severity: 'info',
+    patterns: [
+      new RegExp(String.raw`\bterm\s+of\s+(?:this\s+agreement\s+)?(?:shall\s+be\s+|is\s+)?${days}`, 'i'),
+      new RegExp(String.raw`\bfor\s+an?\s+initial\s+(?:term|period)\s+of\s+${days}`, 'i')
+    ],
+    explain: () => 'How long the agreement runs before it ends or renews.'
+  },
+  {
+    id: 'auto_renewal',
+    label: 'Automatic renewal',
+    category: 'Time',
+    severity: 'risk',
+    patterns: [
+      /\b(?:automatically\s+renew|auto-?renew|shall\s+renew\s+automatically|evergreen)\w*/i,
+      /\brenew(?:s|ed)?\s+for\s+successive\s+(?:periods|terms)/i
+    ],
+    explain: () => 'This contract renews itself unless someone actively stops it. Miss the notice window and you are bound for another full term. This is the single most common way organisations end up paying for things they meant to cancel.'
+  },
+  {
+    id: 'notice_period',
+    label: 'Notice period',
+    category: 'Time',
+    severity: 'watch',
+    patterns: [
+      new RegExp(String.raw`\b(?:written\s+)?notice\s+(?:of\s+)?(?:at\s+least\s+|not\s+less\s+than\s+)?${days}`, 'i'),
+      new RegExp(String.raw`\b${days}\s*(?:prior\s+)?(?:written\s+)?notice`, 'i')
+    ],
+    explain: () => 'The window you must act inside. Read this together with any automatic renewal: the notice period is what makes the renewal escapable or not.'
+  },
+  {
+    id: 'payment_terms',
+    label: 'Payment terms',
+    category: 'Money',
+    severity: 'info',
+    patterns: [
+      /\bnet\s+(\d{1,3})\b/i,
+      new RegExp(String.raw`\bpayable\s+within\s+${days}`, 'i'),
+      new RegExp(String.raw`\bwithin\s+${days}\s+of\s+(?:the\s+)?invoice`, 'i')
+    ],
+    explain: () => 'How long you have to pay after invoicing. Late-payment penalties key off this number.'
+  },
+  {
+    id: 'fees',
+    label: 'Fees and amounts',
+    category: 'Money',
+    severity: 'info',
+    patterns: [
+      new RegExp(String.raw`\b(?:fee|price|amount|sum|consideration|charge)s?\s+of\s+${money}`, 'i'),
+      new RegExp(String.raw`${money}\s+per\s+(?:month|year|annum|user|seat)`, 'i')
+    ],
+    explain: () => 'A stated monetary amount. Check it against what was actually agreed commercially.'
+  },
+  {
+    id: 'late_interest',
+    label: 'Late payment interest',
+    category: 'Money',
+    severity: 'watch',
+    patterns: [
+      /\b(?:interest|late\s+(?:fee|charge|payment))\w*\s+(?:of\s+|at\s+(?:the\s+rate\s+of\s+)?)?(\d{1,2}(?:\.\d+)?)\s*%\s*(?:per\s+(?:month|annum|year))?/i,
+      /\b(\d{1,2}(?:\.\d+)?)\s*%\s+per\s+month\s+on\s+(?:any\s+)?(?:overdue|unpaid)/i
+    ],
+    explain: () => 'A penalty rate on overdue amounts. A monthly percentage compounds to a much larger annual rate than it appears.'
+  },
+  {
+    id: 'price_increase',
+    label: 'Unilateral price increase',
+    category: 'Money',
+    severity: 'risk',
+    patterns: [
+      /\b(?:may|reserves?\s+the\s+right\s+to)\s+(?:increase|adjust|modify)\s+(?:the\s+)?(?:fees|prices|charges|rates)/i,
+      /\bfees?\s+(?:may\s+be|are\s+subject\s+to)\s+(?:increased?|adjustment)/i
+    ],
+    explain: () => 'One side can raise the price without the other agreeing. Check whether a cap or a notice requirement limits it, because without one this term is open-ended.'
+  },
+  {
+    id: 'termination_convenience',
+    label: 'Termination for convenience',
+    category: 'Exit',
+    severity: 'watch',
+    patterns: [
+      /\bterminate\s+(?:this\s+agreement\s+)?(?:at\s+any\s+time\s+)?(?:for\s+convenience|without\s+cause|for\s+any\s+reason)/i,
+      /\bmay\s+terminate\s+.{0,40}\bwithout\s+(?:cause|reason)/i
+    ],
+    explain: () => 'Someone can walk away without needing a reason. Who holds this right, and whether both sides hold it, matters more than the clause itself.'
+  },
+  {
+    id: 'termination_cause',
+    label: 'Termination for cause',
+    category: 'Exit',
+    severity: 'info',
+    patterns: [
+      /\bterminate\s+(?:this\s+agreement\s+)?(?:immediately\s+)?(?:for|upon|in\s+the\s+event\s+of)\s+(?:cause|material\s+breach|default)/i,
+      /\bmaterial\s+breach\s+.{0,60}\bterminat/i
+    ],
+    explain: () => 'The exit route when the other side fails to perform. Look for whether a cure period applies before termination bites.'
+  },
+  {
+    id: 'liability_cap',
+    label: 'Liability cap',
+    category: 'Risk',
+    severity: 'watch',
+    patterns: [
+      new RegExp(String.raw`\b(?:liability|damages)\s+.{0,80}?(?:shall\s+not\s+exceed|limited\s+to|capped\s+at)\s+.{0,40}?(${money}|(?:twelve|12|six|6)\s+months?)`, 'i'),
+      /\b(?:aggregate|total)\s+liability\s+.{0,60}?(?:shall\s+not\s+exceed|limited\s+to)/i
+    ],
+    explain: () => 'The ceiling on what one side can be made to pay. Compare it to the contract value: a cap far below the potential harm shifts that risk onto you.'
+  },
+  {
+    id: 'unlimited_liability',
+    label: 'Uncapped liability',
+    category: 'Risk',
+    severity: 'risk',
+    patterns: [
+      /\b(?:unlimited|without\s+limit|no\s+limitation\s+on)\s+liability/i,
+      /\bliability\s+(?:shall\s+be\s+)?unlimited/i,
+      /\bnothing\s+in\s+this\s+(?:agreement|clause)\s+(?:shall\s+)?limits?\s+(?:the\s+)?liability/i
+    ],
+    explain: () => 'Liability here has no ceiling. Exposure is whatever the loss turns out to be, which is the term most likely to matter and least likely to be read.'
+  },
+  {
+    id: 'indemnity',
+    label: 'Indemnity',
+    category: 'Risk',
+    severity: 'watch',
+    patterns: [
+      /\b(?:shall\s+)?indemnif(?:y|ies|ication)\s+(?:and\s+hold\s+harmless\s+)?/i,
+      /\bhold\s+harmless\b/i
+    ],
+    explain: () => 'A promise to cover the other side’s losses, including third-party claims. Indemnities often sit outside the liability cap, so check whether this one does.'
+  },
+  {
+    id: 'governing_law',
+    label: 'Governing law',
+    category: 'Law',
+    severity: 'info',
+    patterns: [
+      /\bgoverned\s+by\s+(?:and\s+construed\s+in\s+accordance\s+with\s+)?the\s+laws?\s+of\s+([A-Z][\w\s,]{2,40})/i,
+      // Requires a stated jurisdiction, so the section heading
+      // "GOVERNING LAW AND DISPUTES" cannot satisfy it. A heading names the
+      // topic; it does not state which law applies.
+      /\bgoverning\s+law\s*(?:is|shall\s+be|:)\s*(?:the\s+laws?\s+of\s+)?([A-Z][\w\s,]{2,40})/i
+    ],
+    explain: () => 'Which jurisdiction’s law decides the meaning of these words. It changes how many of the other clauses are actually interpreted.'
+  },
+  {
+    id: 'jurisdiction',
+    label: 'Forum and dispute resolution',
+    category: 'Law',
+    severity: 'watch',
+    patterns: [
+      /\b(?:exclusive\s+)?jurisdiction\s+of\s+the\s+courts?\s+of\s+([A-Z][\w\s,]{2,40})/i,
+      /\b(?:settled|resolved)\s+by\s+(?:binding\s+)?arbitration\s+(?:in|administered|under)\s+([\w\s,]{2,50})/i
+    ],
+    explain: () => 'Where a dispute has to be brought. A distant forum or mandatory arbitration can cost more than the dispute is worth, which is often the point.'
+  },
+  {
+    id: 'confidentiality',
+    label: 'Confidentiality duration',
+    category: 'Restrictions',
+    severity: 'info',
+    patterns: [
+      new RegExp(String.raw`\bconfidential\w*\s+.{0,80}?(?:for\s+a\s+period\s+of\s+|survive\w*\s+for\s+)${days}`, 'i'),
+      /\bconfidentiality\s+obligations?\s+.{0,50}(?:survive|continue)\s+(?:indefinitely|in\s+perpetuity)/i
+    ],
+    explain: () => 'How long secrecy obligations last. Perpetual confidentiality is an obligation nobody ever stops carrying.'
+  },
+  {
+    id: 'non_compete',
+    label: 'Non-compete',
+    category: 'Restrictions',
+    severity: 'risk',
+    patterns: [
+      /\bnon-?compet\w+/i,
+      /\bshall\s+not\s+.{0,60}\b(?:compete|engage\s+in\s+any\s+business\s+that\s+competes)/i
+    ],
+    explain: () => 'Restricts what work can be taken on afterwards. Scope, geography and duration decide whether it is enforceable, and those three are worth reading closely.'
+  },
+  {
+    id: 'non_solicit',
+    label: 'Non-solicitation',
+    category: 'Restrictions',
+    severity: 'watch',
+    patterns: [
+      /\bnon-?solicit\w*/i,
+      /\bshall\s+not\s+.{0,50}\bsolicit\s+(?:any\s+)?(?:employee|customer|client)/i
+    ],
+    explain: () => 'Restricts approaching the other side’s people or customers. Check whether it covers those who approach you first.'
+  },
+  {
+    id: 'ip_assignment',
+    label: 'IP ownership',
+    category: 'Restrictions',
+    severity: 'watch',
+    patterns: [
+      /\b(?:all\s+)?(?:intellectual\s+property|IP)\s+(?:rights\s+)?(?:shall\s+)?(?:vest\s+in|be\s+owned\s+by|assigned?\s+to)\s+([\w\s]{2,40})/i,
+      /\bhereby\s+assigns?\s+.{0,50}\b(?:intellectual\s+property|copyright|inventions)/i
+    ],
+    explain: () => 'Who owns what gets made. Assignment clauses can reach further than the work actually paid for, so check the scope.'
+  },
+  {
+    id: 'unilateral_amendment',
+    label: 'Unilateral amendment',
+    category: 'Risk',
+    severity: 'risk',
+    patterns: [
+      /\b(?:may|reserves?\s+the\s+right\s+to)\s+(?:modify|amend|change)\s+(?:these\s+)?(?:terms|this\s+agreement)\s+(?:at\s+any\s+time|from\s+time\s+to\s+time)/i,
+      /\bcontinued\s+use\s+.{0,40}\bconstitutes?\s+acceptance/i
+    ],
+    explain: () => 'One side can rewrite the deal after you have signed it. Whatever you agreed to is only what it says today.'
+  },
+  {
+    id: 'assignment',
+    label: 'Assignment restriction',
+    category: 'Restrictions',
+    severity: 'info',
+    patterns: [
+      /\bshall\s+not\s+assign\s+.{0,60}\bwithout\s+(?:the\s+)?(?:prior\s+)?written\s+consent/i,
+      /\bmay\s+assign\s+this\s+agreement\s+.{0,40}\bwithout\s+consent/i
+    ],
+    explain: () => 'Whether the contract can be handed to someone else. A one-sided right here means you could end up contracting with a party you never chose.'
+  },
+  {
+    id: 'force_majeure',
+    label: 'Force majeure',
+    category: 'Risk',
+    severity: 'info',
+    patterns: [/\bforce\s+majeure\b/i, /\bacts?\s+of\s+God\b/i],
+    explain: () => 'Excuses performance during events outside anyone’s control. Whether payment obligations are excused too is the part that usually matters.'
+  },
+  {
+    id: 'warranty_disclaimer',
+    label: 'Warranty disclaimer',
+    category: 'Risk',
+    severity: 'watch',
+    patterns: [
+      /\bas\s+is\b.{0,40}\bwithout\s+warrant/i,
+      /\bdisclaims?\s+all\s+warrant(?:ies|y)/i,
+      /\bno\s+warrant(?:ies|y)\s+of\s+any\s+kind/i
+    ],
+    explain: () => 'The supplier promises nothing about whether it works. If something fails, this clause is what blocks the claim.'
+  },
+  {
+    id: 'data_protection',
+    label: 'Data protection',
+    category: 'Law',
+    severity: 'info',
+    patterns: [
+      /\b(?:GDPR|General\s+Data\s+Protection\s+Regulation|Digital\s+Personal\s+Data\s+Protection|DPDP)\b/i,
+      /\bdata\s+process(?:or|ing)\s+agreement\b/i
+    ],
+    explain: () => 'Personal-data obligations. These carry regulatory penalties that sit entirely outside the contract’s own liability cap.'
+  }
+];
+
+// Asymmetry is the finding a reader most often misses, because each half looks
+// reasonable alone. It only shows up when the same right is counted per party.
+const PARTY_NEAR = 60;function detectAsymmetry(findings, partyNames) {
+  if (!partyNames || partyNames.length < 2) return [];
+  const out = [];
+  const oneSided = ['termination_convenience', 'price_increase', 'unilateral_amendment', 'assignment'];
+
+  for (const ruleId of oneSided) {
+    const hits = findings.filter(f => f.ruleId === ruleId);
+    if (!hits.length) continue;
+
+    const mentions = partyNames.map(name => {
+      const first = name.split(/\s+/)[0];
+      if (!first || first.length < 3) return 0;
+      const re = new RegExp(first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      return hits.filter(h => re.test(h.quote)).length;
+    });
+
+    const held = mentions.filter(n => n > 0).length;
+    if (held === 1) {
+      const holder = partyNames[mentions.findIndex(n => n > 0)];
+      out.push({
+        ruleId: `asym_${ruleId}`,
+        label: `One-sided: ${hits[0].label}`,
+        category: 'Risk',
+        severity: 'risk',
+        clauseId: hits[0].clauseId,
+        clauseLabel: hits[0].clauseLabel,
+        clauseNumber: hits[0].clauseNumber,
+        clauseIndex: hits[0].clauseIndex,
+        quote: hits[0].quote,
+        matchText: hits[0].matchText,
+        explanation: `Only ${holder} appears to hold this right in the clauses where it is granted. A right one party has and the other does not is worth confirming was intended.`
+      });
+    }
+  }
+  return out;
+}
+
+/* ---- analyse.js ---- */
+// The whole analysis is: cut the document into citable pieces, then let each rule
+// point at pieces it recognises. No step produces text that was not already in
+// the document, which is why a finding can always be proved by scrolling to it.
+
+// After the opening paragraph a contract stops using registered names and refers
+// to each side by its defined term. Asymmetry has to be counted on the term that
+// actually appears in the operative clauses, so the defined terms come first and
+// the registered names are only a fallback.
+const DEFINED_TERM = /\(\s*(?:the\s+)?["“']([A-Z][\w\s]{2,30})["”']\s*\)/g;
+
+function partyNamesFrom(findings, text) {
+  const terms = [];
+  for (const m of text.slice(0, 4000).matchAll(DEFINED_TERM)) {
+    const term = m[1].trim();
+    if (/agreement|services|effective date|term$/i.test(term)) continue;
+    if (!terms.includes(term)) terms.push(term);
+  }
+  if (terms.length >= 2) return terms.slice(0, 2);
+
+  const hit = findings.find(f => f.ruleId === 'parties');
+  if (!hit || !hit.groups) return terms;
+  return hit.groups
+    .filter(Boolean)
+    .map(g => g.replace(/\s*\((?:the\s+)?["“']?[\w\s]+["”']?\)\s*$/i, '').trim())
+    .filter(n => n.length > 2 && n.length < 90);
+}function analyse(text) {
+  const clauses = segment(text);
+  const findings = [];
+  const seen = new Set();
+
+  for (const clause of clauses) {
+    for (const rule of RULES) {
+      for (const pattern of rule.patterns) {
+        // Patterns are authored without /g so that each clause yields its
+        // clearest single hit rather than a wall of near-duplicates.
+        const m = clause.text.match(pattern);
+        if (!m) continue;
+
+        const matchText = m[0].replace(/\s+/g, ' ').trim();
+        const key = `${rule.id}::${clause.id}::${matchText.slice(0, 60)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        findings.push({
+          ruleId: rule.id,
+          label: rule.label,
+          category: rule.category,
+          severity: rule.severity,
+          clauseId: clause.id,
+          clauseLabel: clause.label,
+          clauseNumber: clause.number,
+          clauseIndex: clause.index,
+          matchText,
+          groups: m.slice(1),
+          quote: quoteAround(clause.text, m.index, m[0].length),
+          explanation: rule.explain(m, clause)
+        });
+        break;
+      }
+    }
+  }
+
+  findings.push(...detectAsymmetry(findings, partyNamesFrom(findings, text)));
+
+  findings.sort((a, b) => {
+    const s = SEVERITY[b.severity] - SEVERITY[a.severity];
+    return s !== 0 ? s : (a.clauseIndex ?? 0) - (b.clauseIndex ?? 0);
+  });
+
+  const counts = { risk: 0, watch: 0, info: 0 };
+  for (const f of findings) counts[f.severity]++;
+
+  return {
+    clauses,
+    findings,
+    counts,
+    coverage: {
+      clauses: clauses.length,
+      clausesWithFindings: new Set(findings.map(f => f.clauseId)).size,
+      words: text.trim().split(/\s+/).length
+    }
+  };
+}
+
+/* ---- ui.js ---- */
+const $ = sel => document.querySelector(sel);
+const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+
+const state = { result: null, filter: null, active: null };
+
+// Rendering the document is where the safety claim becomes visible: the clause
+// text shown is the text that was submitted, and highlights are placed by
+// searching that same text. Nothing is re-written on the way to the screen.
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function highlight(clauseText, matches) {
+  if (!matches.length) return escapeHtml(clauseText);
+
+  const spans = [];
+  for (const m of matches) {
+    const needle = m.matchText;
+    // The stored quote is whitespace-normalised, so locate the match by its
+    // first and last few words rather than by an exact string compare.
+    const head = needle.slice(0, 24);
+    let at = clauseText.indexOf(head);
+    if (at === -1) {
+      const loose = needle.split(/\s+/).slice(0, 3).join('\\s+');
+      const re = new RegExp(loose.replace(/[.*+?^${}()|[\]]/g, '\\$&'), 'i');
+      const found = clauseText.match(re);
+      if (!found) continue;
+      at = found.index;
+    }
+    spans.push({ start: at, end: Math.min(clauseText.length, at + needle.length), id: m.ruleId });
+  }
+
+  spans.sort((a, b) => a.start - b.start);
+  const merged = [];
+  for (const s of spans) {
+    const last = merged[merged.length - 1];
+    if (last && s.start <= last.end) { last.end = Math.max(last.end, s.end); last.ids.push(s.id); }
+    else merged.push({ ...s, ids: [s.id] });
+  }
+
+  let out = '';
+  let cursor = 0;
+  for (const s of merged) {
+    out += escapeHtml(clauseText.slice(cursor, s.start));
+    out += `<mark data-rules="${s.ids.join(' ')}">${escapeHtml(clauseText.slice(s.start, s.end))}</mark>`;
+    cursor = s.end;
+  }
+  out += escapeHtml(clauseText.slice(cursor));
+  return out;
+}
+
+function renderDocument() {
+  const host = $('#document');
+  host.innerHTML = '';
+  const byClause = new Map();
+  for (const f of state.result.findings) {
+    if (!byClause.has(f.clauseId)) byClause.set(f.clauseId, []);
+    byClause.get(f.clauseId).push(f);
+  }
+
+  for (const clause of state.result.clauses) {
+    const node = el('section', 'clause');
+    node.id = clause.id;
+    const body = el('p', 'clause-body');
+    body.innerHTML = highlight(clause.text, byClause.get(clause.id) || []);
+    node.appendChild(body);
+    host.appendChild(node);
+  }
+}
+
+function renderFindings() {
+  const host = $('#findings-list');
+  host.innerHTML = '';
+
+  const list = state.filter
+    ? state.result.findings.filter(f => f.severity === state.filter)
+    : state.result.findings;
+
+  if (!list.length) {
+    const e = el('div', 'empty');
+    e.textContent = 'No findings at this level.';
+    host.appendChild(e);
+    return;
+  }
+
+  list.forEach((f, i) => {
+    const card = el('button', 'finding');
+    card.type = 'button';
+    card.dataset.sev = f.severity;
+    card.dataset.ruleId = f.ruleId;
+    card.dataset.clauseId = f.clauseId;
+    // Stagger stays short. Long cascades read as slowness, not polish.
+    card.style.animationDelay = `${Math.min(i, 12) * 40}ms`;
+
+    const head = el('div', 'finding-head');
+    const label = el('span', 'finding-label');
+    label.textContent = f.label;
+    const chip = el('span', 'chip');
+    chip.dataset.sev = f.severity;
+    chip.textContent = f.severity;
+    head.append(label, chip);
+
+    const cite = el('div', 'finding-cite');
+    // The label carries the opening words of the clause so the list stays
+    // scannable, but a citation should read like a citation.
+    cite.textContent = f.clauseNumber ? `Clause ${f.clauseNumber}` : f.clauseLabel;
+
+    const quote = el('div', 'finding-quote');
+    quote.textContent = f.quote;
+
+    const why = el('div', 'finding-why');
+    why.textContent = f.explanation;
+
+    card.append(head, cite, quote, why);
+    card.addEventListener('click', () => jumpTo(f, card));
+    host.appendChild(card);
+  });
+}
+
+function jumpTo(finding, card) {
+  document.querySelectorAll('.finding[data-active="true"]').forEach(n => (n.dataset.active = 'false'));
+  document.querySelectorAll('.clause[data-lit="true"]').forEach(n => (n.dataset.lit = 'false'));
+  document.querySelectorAll('mark[data-live="true"]').forEach(n => (n.dataset.live = 'false'));
+
+  card.dataset.active = 'true';
+  const clause = document.getElementById(finding.clauseId);
+  if (!clause) return;
+
+  clause.dataset.lit = 'true';
+  clause.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  for (const mark of clause.querySelectorAll('mark')) {
+    if (mark.dataset.rules.split(' ').includes(finding.ruleId)) mark.dataset.live = 'true';
+  }
+  state.active = finding;
+}
+
+function renderSummary() {
+  const host = $('#summary');
+  host.innerHTML = '';
+  const order = [['risk', 'Risk'], ['watch', 'Watch'], ['info', 'Info']];
+
+  for (const [sev, name] of order) {
+    const b = el('button', 'tally');
+    b.type = 'button';
+    b.dataset.sev = sev;
+    b.setAttribute('aria-pressed', String(state.filter === sev));
+
+    const n = el('span', 'n');
+    n.textContent = state.result.counts[sev];
+    const k = el('span', 'k');
+    k.textContent = name;
+    b.append(n, k);
+
+    b.addEventListener('click', () => {
+      state.filter = state.filter === sev ? null : sev;
+      renderSummary();
+      renderFindings();
+    });
+    host.appendChild(b);
+  }
+}function run(text) {
+  state.result = analyse(text);
+  state.filter = null;
+  $('#intake').hidden = true;
+  $('#workspace').hidden = false;
+  $('#reset').hidden = false;
+  renderSummary();
+  renderFindings();
+  renderDocument();
+  $('#coverage').textContent =
+    `${state.result.coverage.clauses} clauses · ${state.result.coverage.words} words · ` +
+    `${state.result.findings.length} findings, every one quoted from the text above`;
+}function reset() {
+  state.result = null;
+  $('#intake').hidden = false;
+  $('#workspace').hidden = true;
+  $('#reset').hidden = true;
+  $('#paste').value = '';
+}
+
+/* ---- app.js ---- */
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => run(String(reader.result));
+  reader.readAsText(file);
+}
+
+function wire() {
+  const zone = $('#dropzone');
+  const paste = $('#paste');
+
+  $('#analyse').addEventListener('click', () => {
+    const text = paste.value.trim();
+    if (text.length > 40) run(text);
+    else paste.focus();
+  });
+
+  $('#sample').addEventListener('click', () => {
+    paste.value = SAMPLE;
+    run(SAMPLE);
+  });
+
+  $('#reset').addEventListener('click', reset);
+
+  $('#file').addEventListener('change', e => {
+    if (e.target.files[0]) readFile(e.target.files[0]);
+  });
+
+  // Dragging fires dragleave for every child element crossed, so the counter
+  // keeps the zone from flickering as the pointer moves across it.
+  let depth = 0;
+  for (const type of ['dragenter', 'dragover']) {
+    zone.addEventListener(type, e => {
+      e.preventDefault();
+      if (type === 'dragenter') depth++;
+      zone.dataset.over = 'true';
+    });
+  }
+  zone.addEventListener('dragleave', () => {
+    if (--depth <= 0) { depth = 0; zone.dataset.over = 'false'; }
+  });
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    depth = 0;
+    zone.dataset.over = 'false';
+    const file = e.dataTransfer.files[0];
+    if (file) readFile(file);
+  });
+
+  // Ctrl/Cmd+Enter is the one shortcut here, and shortcuts never animate.
+  paste.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') $('#analyse').click();
+  });
+}
+
+function start() {
+  wire();
+  // #demo gives a shareable link that lands straight on a worked example,
+  // which is the fastest way for someone to judge whether this is useful.
+  if (location.hash === '#demo') run(SAMPLE);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', start);
+} else {
+  start();
+}
+})();</script>
+</body>
+</html>
