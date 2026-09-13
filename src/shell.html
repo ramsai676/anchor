@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Anchor: every finding cited to its clause</title>
-<meta name="description" content="Reads a contract and anchors every finding to the exact clause it came from. It cannot hallucinate, because it never generates.">
+<meta name="description" content="Anchor finds the obligations, deadlines and risks in a contract and anchors every one to the exact clause it came from. It cannot hallucinate, because it never generates.">
 <style>/*__CSS__*/</style>
 </head>
 <body>
@@ -23,30 +23,61 @@
   </div>
 </header>
 
-<main id="intake" class="intake">
-  <h1>Contract review that can’t make things up.</h1>
-  <p>
-    Anchor finds the obligations, deadlines and risks in a contract and shows you
-    the exact clause each one came from. It never writes a sentence about your
-    document, so there is nothing it could invent. Everything runs in this tab, and
-    the contract is never uploaded anywhere.
-  </p>
+<main id="intake" class="hero">
+  <div class="hero-inner">
 
-  <div class="dropzone" id="dropzone" data-over="false">
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-primary" id="sample" type="button">Try a sample contract</button>
-      <label class="btn" for="file" style="display:inline-flex;align-items:center">Choose a file</label>
-      <input type="file" id="file" accept=".txt,.md,text/plain" hidden>
+    <span class="eyebrow"><span class="dot"></span> Locates clauses, never writes them</span>
+
+    <h1>
+      <span class="line"><span>Contract review</span></span>
+      <span class="line"><span>that can’t make</span></span>
+      <span class="line"><span>things up.</span></span>
+    </h1>
+
+    <p class="lede">
+      Lawyers have been sanctioned in real courts for filing case law an AI
+      invented. The citations looked perfect. They did not exist. Anchor never
+      writes a sentence about your contract, so
+      <strong>there is nothing it could invent</strong>. It finds the
+      obligations, deadlines and risks, and shows you the exact clause each one
+      came from.
+    </p>
+
+    <div class="hero-panel">
+      <div class="dropzone" id="dropzone" data-over="false">
+        <div class="intake-buttons">
+          <button class="btn btn-primary" id="sample" type="button">Try a sample contract</button>
+          <label class="btn" for="file">Choose a file</label>
+          <input type="file" id="file" accept=".txt,.md,text/plain" hidden>
+        </div>
+        <div class="dropzone-hint">or drop a .txt file here</div>
+      </div>
+
+      <textarea class="paste" id="paste" spellcheck="false"
+        placeholder="…or paste the contract text here, then press Analyse (Ctrl+Enter)"></textarea>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="analyse" type="button">Analyse</button>
+        <span class="hint-inline">Nothing leaves your browser.</span>
+      </div>
     </div>
-    <div class="dropzone-hint">or drop a .txt file here</div>
-  </div>
 
-  <textarea class="paste" id="paste" spellcheck="false"
-    placeholder="…or paste the contract text here, then press Analyse (Ctrl+Enter)"></textarea>
-
-  <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-    <button class="btn btn-primary" id="analyse" type="button">Analyse</button>
-    <span style="color:var(--ink-3);font-size:12.5px">Nothing leaves your browser.</span>
+    <div class="proof">
+      <div class="proof-card">
+        <div class="k">What it tells you</div>
+        <div class="v">“This contract renews itself unless someone actively stops it.”</div>
+      </div>
+      <div class="proof-link" aria-hidden="true">
+        <svg width="54" height="20" viewBox="0 0 54 20" fill="none">
+          <path class="trace" d="M2 10h44" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M40 4.5 47.5 10 40 15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="proof-card">
+        <div class="k">Where it came from</div>
+        <div class="v">Clause 2.2 &middot; highlighted in your document &middot; one click away</div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -57,7 +88,7 @@
   </aside>
   <article>
     <div class="document">
-      <div style="color:var(--ink-3);font-size:12px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)" id="coverage"></div>
+      <div class="coverage" id="coverage"></div>
       <div id="document"></div>
     </div>
   </article>

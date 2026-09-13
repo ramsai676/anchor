@@ -48,8 +48,17 @@ checkCollisions(pieces);
 const js = pieces.map(p => `/* ---- ${p.name} ---- */\n${p.code}`).join('\n\n');
 
 const html = src('shell.html')
-  .replace('/*__CSS__*/', () => src('app.css'))
+  .replace('/*__CSS__*/', () => [src('app.css'), src('hero.css')].join('\n'))
   .replace('/*__JS__*/', () => `(function(){\n'use strict';\n${js}\n})();`);
+
+// A bundle that does not parse is worse than a failed build: the build reports
+// success and the page silently does nothing at all.
+try {
+  new Function(js);
+} catch (err) {
+  console.error('build failed, bundle does not parse:', err.message);
+  process.exit(1);
+}
 
 writeFileSync(join(root, 'index.html'), html, 'utf8');
 

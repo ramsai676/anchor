@@ -30,6 +30,8 @@
   --accent: #14161a;
   --mark: #fff1a8;
   --mark-live: #ffd84d;
+  --glow-a: rgba(180, 35, 24, 0.20);
+  --glow-b: rgba(56, 110, 190, 0.18);
 
   --radius: 10px;
   --shadow: 0 1px 2px rgba(16, 18, 22, 0.05), 0 4px 16px -6px rgba(16, 18, 22, 0.10);
@@ -59,6 +61,8 @@
     --accent: #eceef1;
     --mark: #4d4212;
     --mark-live: #7a6716;
+    --glow-a: rgba(253, 120, 110, 0.20);
+    --glow-b: rgba(86, 148, 240, 0.19);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px -6px rgba(0, 0, 0, 0.5);
   }
 }
@@ -389,4 +393,20 @@ mark[data-live='true'] { background: var(--mark-live); }
   .btn:active, .finding:active, .tally:active { transform: none; }
   .dropzone[data-over='true'] { transform: none; }
   * { scroll-behavior: auto !important; }
+}
+
+/* ---------- hero support ---------- */
+
+.intake-buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.intake-buttons label { display: inline-flex; align-items: center; }
+
+.actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.hint-inline { color: var(--ink-3); font-size: 12.5px; }
+
+.coverage {
+  color: var(--ink-3);
+  font-size: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
