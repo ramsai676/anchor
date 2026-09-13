@@ -1,0 +1,14 @@
+{
+  "name": "anchor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reads a contract and anchors every finding to the clause it came from",
+  "author": "Ram Sai Kandagatla <ramsaikandagatla@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/rules.test.js"
+  },
+  "engines": { "node": ">=18" }
+}
