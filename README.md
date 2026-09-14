@@ -56,6 +56,37 @@ price increases, unilateral amendment, assignment) and flags rights only one par
 appears to hold. On the sample contract it catches that only the Provider may raise
 prices.
 
+## Measured on real contracts
+
+Anchor was first tested against a contract written for the purpose, which only
+proves that rules match text written to be matched. `tools/fetch-real-contracts.js`
+pulls real agreements filed as SEC exhibits, and `tools/evaluate.js` measures
+recall against a plain keyword search of the same documents: a term that is
+present and goes unreported counts as a miss.
+
+On 20 real agreements from Adobe, Vonage, Jazz Pharmaceuticals, BellRing and
+others:
+
+| | |
+|---|---|
+| Recall | **84.4%** of terms present were reported |
+| Citation accuracy | **100%** across 197 quotes |
+| Findings | 10.4 per contract |
+
+The first run scored **54.5%**, and the gap was entirely patterns written too
+tightly around one drafting style. Confidentiality found 0 of 11 because the
+rule demanded a duration clause. Liability caps found 1 of 8 because they
+required a figure, where real caps are written as a multiple of fees paid.
+Governing law missed 5 of 8 over the exact words "the laws of".
+
+Reproduce it:
+
+    node tools/fetch-real-contracts.js 20
+    node tools/evaluate.js
+
+Still weak: assignment restrictions and IP ownership clauses, on small samples.
+Those numbers are in `corpus/evaluation.json` alongside the rest.
+
 ## Privacy
 
 The contract never leaves your browser. There is no upload, no server, no
