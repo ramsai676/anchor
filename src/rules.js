@@ -93,8 +93,9 @@ export const RULES = [
     category: 'Money',
     severity: 'watch',
     patterns: [
-      /\b(?:interest|late\s+(?:fee|charge|payment))\w*\s+(?:of\s+|at\s+(?:the\s+rate\s+of\s+)?)?(\d{1,2}(?:\.\d+)?)\s*%\s*(?:per\s+(?:month|annum|year))?/i,
-      /\b(\d{1,2}(?:\.\d+)?)\s*%\s+per\s+month\s+on\s+(?:any\s+)?(?:overdue|unpaid)/i
+      /\b(?:interest|late\s+(?:fee|charge|payment))\w*\b[^.]{0,80}?(\d{1,2}(?:\.\d+)?)\s*%/i,
+      /\b(\d{1,2}(?:\.\d+)?)\s*%\s+per\s+(?:month|annum)\b[^.]{0,80}?(?:overdue|unpaid|past\s+due|late)/i,
+      /\b(?:overdue|unpaid|past\s+due)\b[^.]{0,100}?\binterest\b[^.]{0,60}?\d{1,2}(?:\.\d+)?\s*%/i
     ],
     explain: () => 'A penalty rate on overdue amounts. A monthly percentage compounds to a much larger annual rate than it appears.'
   },
@@ -115,8 +116,10 @@ export const RULES = [
     category: 'Exit',
     severity: 'watch',
     patterns: [
-      /\bterminate\s+(?:this\s+agreement\s+)?(?:at\s+any\s+time\s+)?(?:for\s+convenience|without\s+cause|for\s+any\s+reason)/i,
-      /\bmay\s+terminate\s+.{0,40}\bwithout\s+(?:cause|reason)/i
+      // Real clauses put many words between the verb and the qualifier, and
+      // often lead with the qualifier instead. The old pair found 0 of 3.
+      /\bterminate\b[^.]{0,100}?(?:for\s+convenience|without\s+cause|for\s+any\s+reason|with\s+or\s+without\s+cause)/i,
+      /\b(?:for\s+convenience|without\s+cause|with\s+or\s+without\s+cause)\b[^.]{0,100}?\bterminat/i
     ],
     explain: () => 'Someone can walk away without needing a reason. Who holds this right, and whether both sides hold it, matters more than the clause itself.'
   },
@@ -126,8 +129,9 @@ export const RULES = [
     category: 'Exit',
     severity: 'info',
     patterns: [
-      /\bterminate\s+(?:this\s+agreement\s+)?(?:immediately\s+)?(?:for|upon|in\s+the\s+event\s+of)\s+(?:cause|material\s+breach|default)/i,
-      /\bmaterial\s+breach\s+.{0,60}\bterminat/i
+      /\bterminate\b[^.]{0,120}?(?:material\s+breach|for\s+cause|event\s+of\s+default)/i,
+      /\b(?:material\s+breach|event\s+of\s+default)\b[^.]{0,120}?\bterminat/i,
+      /\bfails?\s+to\s+cure\b[^.]{0,100}?\bterminat/i
     ],
     explain: () => 'The exit route when the other side fails to perform. Look for whether a cure period applies before termination bites.'
   },
@@ -138,7 +142,11 @@ export const RULES = [
     severity: 'watch',
     patterns: [
       new RegExp(String.raw`\b(?:liability|damages)\s+.{0,80}?(?:shall\s+not\s+exceed|limited\s+to|capped\s+at)\s+.{0,40}?(${money}|(?:twelve|12|six|6)\s+months?)`, 'i'),
-      /\b(?:aggregate|total)\s+liability\s+.{0,60}?(?:shall\s+not\s+exceed|limited\s+to)/i
+      /\b(?:aggregate|total|cumulative)\s+liability\b[^.]{0,140}?(?:shall\s+not\s+exceed|not\s+exceed|limited\s+to|capped)/i,
+      // Caps are usually a multiple of fees paid, not a stated figure, which is
+      // why requiring money nearby found 1 of 8.
+      /\bliabilit(?:y|ies)\b[^.]{0,160}?(?:shall\s+not\s+exceed|will\s+not\s+exceed)[^.]{0,90}?(?:fees|amounts?|charges)\s+(?:paid|payable|received)/i,
+      /\bin\s+no\s+event\s+shall\b[^.]{0,140}?\bliab\w+[^.]{0,140}?exceed/i
     ],
     explain: () => 'The ceiling on what one side can be made to pay. Compare it to the contract value: a cap far below the potential harm shifts that risk onto you.'
   },
@@ -171,7 +179,10 @@ export const RULES = [
     category: 'Law',
     severity: 'info',
     patterns: [
-      /\bgoverned\s+by\s+(?:and\s+construed\s+in\s+accordance\s+with\s+)?the\s+laws?\s+of\s+([A-Z][\w\s,]{2,40})/i,
+      // "the laws of" verbatim missed 5 of 8: real clauses insert "and construed
+      // in accordance with", "the State of", or a jurisdiction's own phrasing.
+      /\bgoverned\s+by\b[^.]{0,90}?\blaws?\s+of\s+(?:the\s+)?(?:State\s+of\s+|Commonwealth\s+of\s+)?([A-Z][\w\s,]{2,40})/i,
+      /\bconstrued\s+in\s+accordance\s+with\b[^.]{0,70}?\blaws?\s+of\s+(?:the\s+)?([A-Z][\w\s,]{2,40})/i,
       // Requires a stated jurisdiction, so the section heading
       // "GOVERNING LAW AND DISPUTES" cannot satisfy it. A heading names the
       // topic; it does not state which law applies.
@@ -196,8 +207,14 @@ export const RULES = [
     category: 'Restrictions',
     severity: 'info',
     patterns: [
+      // Requiring a duration found 0 of 11 real contracts that have a
+      // confidentiality obligation. Most impose the duty in one sentence and
+      // put any duration in another.
       new RegExp(String.raw`\bconfidential\w*\s+.{0,80}?(?:for\s+a\s+period\s+of\s+|survive\w*\s+for\s+)${days}`, 'i'),
-      /\bconfidentiality\s+obligations?\s+.{0,50}(?:survive|continue)\s+(?:indefinitely|in\s+perpetuity)/i
+      /\bconfidentiality\s+obligations?\s+.{0,50}(?:survive|continue)\s+(?:indefinitely|in\s+perpetuity)/i,
+      /\b(?:shall|will|agrees?\s+to)\s+(?:hold|keep|maintain|treat)\b[^.]{0,60}?\bconfidential\b/i,
+      /\bConfidential\s+Information\b[^.]{0,100}?(?:not\s+disclose|shall\s+not\s+be\s+disclosed|protect)/i,
+      /\bnon-?disclosure\s+(?:agreement|obligations?)\b/i
     ],
     explain: () => 'How long secrecy obligations last. Perpetual confidentiality is an obligation nobody ever stops carrying.'
   },
@@ -251,8 +268,9 @@ export const RULES = [
     category: 'Restrictions',
     severity: 'info',
     patterns: [
-      /\bshall\s+not\s+assign\s+.{0,60}\bwithout\s+(?:the\s+)?(?:prior\s+)?written\s+consent/i,
-      /\bmay\s+assign\s+this\s+agreement\s+.{0,40}\bwithout\s+consent/i
+      /\b(?:shall|may|will)\s+not\s+(?:assign|transfer)\b[^.]{0,120}?without\s+(?:the\s+)?(?:prior\s+)?written\s+consent/i,
+      /\bneither\s+party\s+(?:shall|may)\s+assign\b/i,
+      /\bmay\s+assign\b[^.]{0,100}?without\s+(?:the\s+)?(?:prior\s+)?consent/i
     ],
     explain: () => 'Whether the contract can be handed to someone else. A one-sided right here means you could end up contracting with a party you never chose.'
   },

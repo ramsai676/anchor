@@ -1,3 +1,6 @@
 node_modules/
 *.log
 shot-*.png
+media/
+corpus
+corpus/
