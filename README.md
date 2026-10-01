@@ -1,4 +1,19 @@
-# Anchor
+<!-- header:start -->
+<p align="center">
+  <img src=".github/banner.png" alt="Anchor: Reads a contract and shows the exact clause every finding came from. It cannot hallucinate." width="100%">
+</p>
+
+<p align="center">
+  <a href="https://ramsai676.github.io/anchor/#demo"><img src="https://img.shields.io/badge/Live%20demo-Open%20in%20browser-fbbf24?style=for-the-badge" alt="Live demo"></a>
+  <img src="https://img.shields.io/badge/-JavaScript-1f2937?style=flat-square&logo=javascript&logoColor=white" alt="JavaScript">
+  <img src="https://img.shields.io/badge/tests-included-22c55e?style=flat-square" alt="Tests included">
+</p>
+
+<p align="center">
+  <img src=".github/screenshot.png" alt="Anchor screenshot" width="100%">
+</p>
+
+<!-- header:end -->
 
 Reads a contract, finds the obligations, deadlines and risks, and shows you the
 exact clause each one came from.
